@@ -48,7 +48,7 @@ client.on('messageCreate', async (message) => {
                     await message.channel.delete();
                     
                     // Thông báo thành công
-                    await clonedChannel.send('💥 Kênh đã bị nuke và nhân bản thành công!');
+                    await clonedChannel.send('<a:congrats:1289586672060600322>Kênh đã được nuke thành công!');
                 } catch (error) {
                     console.error('Có lỗi xảy ra khi nuke kênh:', error);
                     message.reply('Đã xảy ra lỗi khi thực hiện nuke kênh.');
