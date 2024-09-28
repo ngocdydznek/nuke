@@ -1,74 +1,114 @@
-const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
-const keepAlive = require('./server'); // Import server.js để giữ bot online 24/7
+// Import các thư viện cần thiết
+const { Client, GatewayIntentBits, ButtonStyle, PermissionsBitField, ActionRowBuilder, ButtonBuilder } = require('discord.js');
+const express = require('express');
 
-// Khởi tạo bot
+// Tạo ứng dụng express để giữ bot hoạt động 24/7
+const server = express();
+server.all('/', (req, res) => {
+  res.send('Bot đang hoạt động!');
+});
+
+function keepAlive() {
+  server.listen(3000, () => {
+    console.log('Server đang hoạt động!');
+  });
+}
+
+// Tạo bot với các quyền cần thiết
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers, // Quyền để xem số lượng thành viên
+  ]
 });
 
-client.once('ready', () => {
-    console.log(`Bot đã sẵn sàng với tên: ${client.user.tag}`);
-});
+const TOKEN = 'TOKEN'; // Thay thế bằng token của bạn
 
+client.on('ready', () => {
+    console.log(`Bot đã đăng nhập thành công với tên ${client.user.tag}`);
+  
+    // Cập nhật trạng thái bot thành "Đang chơi .gg/dstore"
+    client.user.setActivity('mọi thứ', { type: 'WATCHING' });
+  
+    console.log('Trạng thái bot đã được cập nhật');
+  });
+
+// Xử lý lệnh "!nuke" với xác nhận Yes/No
 client.on('messageCreate', async (message) => {
-    // Kiểm tra quyền quản trị
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-        return message.reply('Bạn không có quyền sử dụng lệnh này!');
-    }
+  if (message.content === '!nuke' && message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+    // Tạo một hàng nút bấm (Yes và No)
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('yes')
+          .setLabel('Yes')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('no')
+          .setLabel('No')
+          .setStyle(ButtonStyle.Secondary),
+      );
 
-    // Nếu tin nhắn bắt đầu với "!nuke"
-    if (message.content.startsWith('!nuke')) {
-        // Hỏi lại người dùng có muốn thực hiện lệnh không
-        const confirmationMessage = await message.channel.send('Bạn có chắc chắn muốn nuke kênh này? Trả lời `yes` hoặc `no`.');
+    // Gửi tin nhắn xác nhận với các nút Yes và No
+    const confirmMessage = await message.reply({ content: 'Bạn có chắc muốn nuke kênh này không?', components: [row] });
 
-        // Bộ lọc chỉ chấp nhận phản hồi từ người dùng đã gửi lệnh
-        const filter = (response) => {
-            return response.author.id === message.author.id && ['yes', 'no'].includes(response.content.toLowerCase());
-        };
+    // Tạo bộ lọc để kiểm tra phản hồi chỉ từ người đã gửi lệnh và là Yes hoặc No
+    const filter = interaction => {
+      return ['yes', 'no'].includes(interaction.customId) && interaction.user.id === message.author.id;
+    };
 
-        // Chờ người dùng trả lời
-        const collector = message.channel.createMessageCollector({ filter, time: 15000, max: 1 });
+    // Chờ người dùng bấm vào Yes hoặc No
+    const collector = confirmMessage.createMessageComponentCollector({ filter, time: 15000 });
 
-        collector.on('collect', async (response) => {
-            if (response.content.toLowerCase() === 'yes') {
-                try {
-                    // Lưu lại vị trí của kênh ban đầu
-                    const channelPosition = message.channel.position;
+    collector.on('collect', async interaction => {
+      if (interaction.customId === 'yes') {
+        const channel = message.channel;
+        const position = channel.position;
 
-                    // Nhân bản kênh
-                    const clonedChannel = await message.channel.clone({
-                        name: message.channel.name,
-                        reason: 'Kênh đã bị nuke bởi ' + message.author.tag,
-                    });
+        // Kết thúc việc thu thập trước khi xóa kênh
+        collector.stop();
 
-                    // Di chuyển kênh nhân bản về đúng vị trí cũ
-                    await clonedChannel.setPosition(channelPosition);
+        try {
+          // Tạo bản sao kênh hiện tại
+          const clonedChannel = await channel.clone({
+            name: channel.name,
+            reason: 'Channel nuked by bot',
+          });
 
-                    // Xóa kênh cũ
-                    await message.channel.delete();
-                    
-                    // Thông báo thành công
-                    await clonedChannel.send('<a:congrats:1289586672060600322>Kênh đã được nuke thành công!');
-                } catch (error) {
-                    console.error('Có lỗi xảy ra khi nuke kênh:', error);
-                    message.reply('Đã xảy ra lỗi khi thực hiện nuke kênh.');
-                }
-            } else if (response.content.toLowerCase() === 'no') {
-                // Nếu người dùng trả lời 'no'
-                message.reply('Lệnh nuke đã bị hủy.');
-            }
-        });
+          // Đặt lại vị trí cũ cho kênh mới
+          await clonedChannel.setPosition(position);
 
-        collector.on('end', (collected, reason) => {
-            if (reason === 'time') {
-                message.reply('Lệnh nuke đã hết thời gian chờ và bị hủy.');
-            }
-        });
-    }
+          // Xóa kênh ban đầu
+          await channel.delete('Channel was nuked');
+
+          // Gửi tin nhắn thông báo tại kênh mới
+          await clonedChannel.send('<a:hi:1247560068040491028> Kênh đã được nuke thành công!');
+        } catch (error) {
+          console.error('Có lỗi xảy ra khi nuke kênh:', error);
+        }
+      } else if (interaction.customId === 'no') {
+        // Nếu người dùng chọn No, hủy bỏ hành động nuke
+        await message.reply('Lệnh nuke đã bị hủy.');
+      }
+    });
+
+    collector.on('end', collected => {
+      if (confirmMessage && confirmMessage.editable) {
+        // Sau khi hết thời gian hoặc người dùng đã chọn, xóa các nút để tránh tương tác thêm
+        confirmMessage.edit({ components: [] });
+      }
+    });
+
+  } else if (message.content === '!nuke') {
+    // Nếu người dùng không có quyền quản lý kênh
+    message.reply('Bạn không có quyền sử dụng lệnh này.');
+  }
 });
 
-// Đảm bảo server luôn chạy để bot hoạt động
+// Giữ bot hoạt động 24/7 bằng cách sử dụng một máy chủ web nhỏ
 keepAlive();
 
-// Đăng nhập với token của bot
-client.login('YOUR_BOT_TOKEN');
+// Đăng nhập bot với token
+client.login(TOKEN);
