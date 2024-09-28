@@ -110,5 +110,5 @@ client.on('messageCreate', async (message) => {
 // Giữ bot hoạt động 24/7 bằng cách sử dụng một máy chủ web nhỏ
 keepAlive();
 
-// Đăng nhập bot với token
-client.login(DISCORD_BOT_TOKEN);
+// Đảm bảo mã của bạn có dòng này để lấy token từ biến môi trường
+client.login(process.env.DISCORD_BOT_TOKEN);
