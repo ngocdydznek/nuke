@@ -84,7 +84,7 @@ client.on('messageCreate', async (message) => {
           await channel.delete('Channel was nuked');
 
           // Gửi tin nhắn thông báo tại kênh mới
-          await clonedChannel.send('<a:hi:1247560068040491028> Kênh đã được nuke thành công!');
+          await clonedChannel.send('<a:hi:1247560068040491028> Kênh đã được nuke thành công!\n<:DStore_cart:1301625923086319616> Cần mua hàng thì vào https://discord.com/channels/1069919950648651816/1069919951755948073/1130139145474416671 nha thượng đế ><');
         } catch (error) {
           console.error('Có lỗi xảy ra khi nuke kênh:', error);
         }
