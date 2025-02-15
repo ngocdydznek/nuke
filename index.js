@@ -24,7 +24,7 @@ const client = new Client({
   ]
 });
 
-const TOKEN = 'DISCORD_BOT_TOKEN'; // Thay thế bằng token của bạn
+const TOKEN = 'MTIyNTg0NDgyNzM5MjgzOTY4MQ.GcEaXS.nsg-Y3cfw1dO7ef28kdeNUavkHrp6-ubUJitZo'; // Thay thế bằng token của bạn
 
 client.on('ready', () => {
     console.log(`Bot đã đăng nhập thành công với tên ${client.user.tag}`);
